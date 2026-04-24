@@ -1,0 +1,297 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: variants
+    description: Code variants generation, conversion, and benchmarking
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /analyze:
+    post:
+      operationId: analyzeCode
+      tags: [variants]
+      summary: Detect language, fix errors, and generate technique-based variants
+      description: |
+        Takes raw input code, detects its language, fixes any errors,
+        then generates multiple unique variants of the program based on
+        different data structure & algorithm techniques. Each variant is
+        benchmarked (time and memory) and saved as a "blog post" categorised
+        by its technique. Returns the analysis result and all generated variants.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeRequest"
+      responses:
+        "200":
+          description: Analysis complete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzeResponse"
+
+  /convert:
+    post:
+      operationId: convertVariant
+      tags: [variants]
+      summary: Convert a variant to a target programming language
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConvertRequest"
+      responses:
+        "200":
+          description: Converted code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConvertResponse"
+
+  /blogs:
+    get:
+      operationId: listBlogs
+      tags: [variants]
+      summary: List all generated variants grouped by technique
+      responses:
+        "200":
+          description: All variants by technique
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlogList"
+
+  /blogs/{technique}:
+    get:
+      operationId: getBlogByTechnique
+      tags: [variants]
+      summary: List variants for a specific technique
+      parameters:
+        - in: path
+          name: technique
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Variants for the technique
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlogTechniqueGroup"
+
+  /variants/{id}:
+    get:
+      operationId: getVariant
+      tags: [variants]
+      summary: Get a single variant by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Variant detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Variant"
+
+  /techniques:
+    get:
+      operationId: listTechniques
+      tags: [variants]
+      summary: List all supported algorithm/data-structure techniques
+      responses:
+        "200":
+          description: Techniques list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TechniqueList"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    Benchmark:
+      type: object
+      properties:
+        timeComplexity:
+          type: string
+          description: Big-O time complexity, e.g. O(n log n)
+        spaceComplexity:
+          type: string
+          description: Big-O space complexity, e.g. O(n)
+        estimatedTimeMs:
+          type: number
+          description: Estimated runtime in milliseconds for a representative input
+        estimatedMemoryKb:
+          type: number
+          description: Estimated peak memory usage in kilobytes
+        balanceScore:
+          type: number
+          description: Score 0-100 of how well this variant balances time and memory
+      required: [timeComplexity, spaceComplexity, estimatedTimeMs, estimatedMemoryKb, balanceScore]
+
+    Variant:
+      type: object
+      properties:
+        id:
+          type: string
+        technique:
+          type: string
+          description: e.g. "sorting", "two-pointers", "dynamic-programming"
+        techniqueLabel:
+          type: string
+          description: Human-readable technique label
+        title:
+          type: string
+        summary:
+          type: string
+          description: Short blog-style description of the approach
+        explanation:
+          type: string
+          description: Detailed explanation of how this variant works
+        language:
+          type: string
+        code:
+          type: string
+        benchmark:
+          $ref: "#/components/schemas/Benchmark"
+        createdAt:
+          type: string
+      required: [id, technique, techniqueLabel, title, summary, explanation, language, code, benchmark, createdAt]
+
+    AnalyzeRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+        hintLanguage:
+          type: string
+          description: Optional language hint
+      required: [code]
+
+    AnalyzeResponse:
+      type: object
+      properties:
+        detectedLanguage:
+          type: string
+        originalCode:
+          type: string
+        fixedCode:
+          type: string
+        errorsFound:
+          type: array
+          items:
+            type: string
+        problemSummary:
+          type: string
+          description: Short summary of what the input program does
+        variants:
+          type: array
+          items:
+            $ref: "#/components/schemas/Variant"
+        recommendedVariantId:
+          type: string
+          description: Id of the variant that best balances time and memory
+      required: [detectedLanguage, originalCode, fixedCode, errorsFound, problemSummary, variants, recommendedVariantId]
+
+    ConvertRequest:
+      type: object
+      properties:
+        variantId:
+          type: string
+        targetLanguage:
+          type: string
+          description: e.g. python, java, c, cpp, javascript, ruby, rust, go, swift, kotlin
+      required: [variantId, targetLanguage]
+
+    ConvertResponse:
+      type: object
+      properties:
+        variantId:
+          type: string
+        targetLanguage:
+          type: string
+        code:
+          type: string
+        notes:
+          type: string
+          description: Notes about the conversion (idiomatic adjustments, etc.)
+      required: [variantId, targetLanguage, code, notes]
+
+    BlogTechniqueGroup:
+      type: object
+      properties:
+        technique:
+          type: string
+        techniqueLabel:
+          type: string
+        variants:
+          type: array
+          items:
+            $ref: "#/components/schemas/Variant"
+      required: [technique, techniqueLabel, variants]
+
+    BlogList:
+      type: object
+      properties:
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/BlogTechniqueGroup"
+        totalVariants:
+          type: integer
+      required: [groups, totalVariants]
+
+    TechniqueInfo:
+      type: object
+      properties:
+        slug:
+          type: string
+        label:
+          type: string
+        description:
+          type: string
+      required: [slug, label, description]
+
+    TechniqueList:
+      type: object
+      properties:
+        techniques:
+          type: array
+          items:
+            $ref: "#/components/schemas/TechniqueInfo"
+      required: [techniques]

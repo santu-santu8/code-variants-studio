@@ -1,6 +1,5 @@
 {
-  "rootDirectory": "artifacts/code-variants",
-  "outputDirectory": "dist/public",
-  "buildCommand": "pnpm install && pnpm build",
+  "outputDirectory": "artifacts/code-variants/dist/public",
+  "buildCommand": "cd artifacts/code-variants && pnpm install && pnpm build",
   "installCommand": "pnpm install"
 }

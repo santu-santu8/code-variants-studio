@@ -1,5 +1,4 @@
 {
   "buildCommand": "npm install -g pnpm && pnpm install && pnpm --filter @workspace/code-variants build",
-  "installCommand": "npm install -g pnpm && pnpm install",
-  "outputDirectory": "artifacts/code-variants/dist/public"
+  "installCommand": "npm install -g pnpm && pnpm install"
 }

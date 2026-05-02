@@ -7,7 +7,7 @@ import {
   type Variant,
 } from "./store";
 
-const MODEL = "gemma2-9b-it";
+const MODEL = "mixtral-8x7b-32768";
 
 function extractJson(raw: string): unknown {
   const trimmed = raw.trim();

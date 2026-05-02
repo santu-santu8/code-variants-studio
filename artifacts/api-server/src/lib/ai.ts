@@ -7,11 +7,10 @@ import {
   type Variant,
 } from "./store";
 
-const MODEL = "llama-3.3-70b-versatile";
+const MODEL = "llama3-8b-8192";
 
 function extractJson(raw: string): unknown {
   const trimmed = raw.trim();
-  // strip markdown fences if present
   const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
   const candidate = fenceMatch ? fenceMatch[1] : trimmed;
   return JSON.parse(candidate);
@@ -20,7 +19,7 @@ function extractJson(raw: string): unknown {
 async function chatJson(systemPrompt: string, userPrompt: string): Promise<unknown> {
   const res = await openai.chat.completions.create({
     model: MODEL,
-    max_completion_tokens: 8192,
+    max_tokens: 4096,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
@@ -45,7 +44,6 @@ export async function analyzeAndGenerate(
   code: string,
   hintLanguage?: string,
 ): Promise<AnalyzeOutcome> {
-  // STEP 1: detect language + fix errors + summarize problem
   const detectionPrompt = `You are a senior polyglot software engineer. Analyse the following program.
 ${hintLanguage ? `User suggests the language is "${hintLanguage}". Verify or correct.` : ""}
 Tasks:
@@ -85,12 +83,11 @@ ${code}
   const errorsFound = Array.isArray(detection.errorsFound) ? detection.errorsFound : [];
   const problemSummary = detection.problemSummary ?? "";
 
-  // STEP 2: generate variants across techniques
   const techniqueList = TECHNIQUES.map((t) => `- ${t.slug} (${t.label}): ${t.description}`).join(
     "\n",
   );
 
-  const variantsPrompt = `You are a competitive-programming polyglot. Given the corrected program below, produce MULTIPLE distinct, fully runnable solutions to the SAME problem in the SAME language (${detectedLanguage}). Each solution MUST use a different algorithmic / data-structure technique drawn from this taxonomy. PICK BETWEEN 6 AND 9 of the most APPLICABLE techniques for this problem (do NOT force inapplicable ones). Each variant MUST be unique — no two variants may share the same approach.
+  const variantsPrompt = `You are a competitive-programming polyglot. Given the corrected program below, produce MULTIPLE distinct, fully runnable solutions to the SAME problem in the SAME language (${detectedLanguage}). Each solution MUST use a different algorithmic / data-structure technique drawn from this taxonomy. PICK BETWEEN 3 AND 5 of the most APPLICABLE techniques for this problem (do NOT force inapplicable ones). Each variant MUST be unique — no two variants may share the same approach.
 
 Available techniques (use the slug exactly):
 ${techniqueList}
@@ -161,10 +158,7 @@ Problem summary: ${problemSummary}`;
       spaceComplexity: v.benchmark?.spaceComplexity ?? "O(n)",
       estimatedTimeMs: Number(v.benchmark?.estimatedTimeMs ?? 1),
       estimatedMemoryKb: Number(v.benchmark?.estimatedMemoryKb ?? 64),
-      balanceScore: Math.max(
-        0,
-        Math.min(100, Number(v.benchmark?.balanceScore ?? 50)),
-      ),
+      balanceScore: Math.max(0, Math.min(100, Number(v.benchmark?.balanceScore ?? 50))),
     };
     const variant: Variant = {
       id: randomUUID(),
@@ -182,7 +176,6 @@ Problem summary: ${problemSummary}`;
     variantStore.add(variant);
   }
 
-  // recommended = best balance score
   const recommended = variants.reduce<Variant | null>((best, v) => {
     if (!best) return v;
     return v.benchmark.balanceScore > best.benchmark.balanceScore ? v : best;

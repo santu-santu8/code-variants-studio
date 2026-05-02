@@ -7,7 +7,7 @@ import {
   type Variant,
 } from "./store";
 
-const MODEL = "llama3-8b-8192";
+const MODEL = "gemma2-9b-it";
 
 function extractJson(raw: string): unknown {
   const trimmed = raw.trim();
@@ -19,7 +19,7 @@ function extractJson(raw: string): unknown {
 async function chatJson(systemPrompt: string, userPrompt: string): Promise<unknown> {
   const res = await openai.chat.completions.create({
     model: MODEL,
-    max_tokens: 4096,
+    max_tokens: 2048,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
@@ -87,17 +87,16 @@ ${code}
     "\n",
   );
 
-  const variantsPrompt = `You are a competitive-programming polyglot. Given the corrected program below, produce MULTIPLE distinct, fully runnable solutions to the SAME problem in the SAME language (${detectedLanguage}). Each solution MUST use a different algorithmic / data-structure technique drawn from this taxonomy. PICK BETWEEN 3 AND 5 of the most APPLICABLE techniques for this problem (do NOT force inapplicable ones). Each variant MUST be unique — no two variants may share the same approach.
+  const variantsPrompt = `You are a competitive-programming polyglot. Given the corrected program below, produce distinct, fully runnable solutions to the SAME problem in the SAME language (${detectedLanguage}). Each solution MUST use a different algorithmic technique. PICK EXACTLY 3 techniques. Each variant MUST be unique.
 
 Available techniques (use the slug exactly):
 ${techniqueList}
 
 Each variant must:
-- Be complete and executable as-is in ${detectedLanguage} (include any necessary imports/main entry point so it runs standalone).
-- Solve the SAME problem with the SAME inputs/outputs as the corrected program.
-- Be syntactically and semantically correct (no placeholders, no TODOs).
-- Be genuinely different in approach, not a cosmetic rewrite.
-- Include accurate big-O time and space complexity, an estimatedTimeMs (a realistic ms estimate for a moderate input size like n=10000), and an estimatedMemoryKb estimate, and a balanceScore from 0 to 100 that rewards a good time/memory trade-off (higher = better balance).
+- Be complete and executable as-is in ${detectedLanguage}.
+- Solve the SAME problem with the SAME inputs/outputs.
+- Be syntactically correct (no placeholders, no TODOs).
+- Include big-O time and space complexity, estimatedTimeMs, estimatedMemoryKb, and balanceScore 0-100.
 
 Return STRICT JSON:
 {
@@ -105,8 +104,8 @@ Return STRICT JSON:
     {
       "technique": "two-pointers",
       "title": "Two-pointer linear scan",
-      "summary": "Short blog-style hook describing the approach (1-2 sentences).",
-      "explanation": "Full paragraph explaining how this variant works, why it suits the problem, and any trade-offs.",
+      "summary": "Short 1-2 sentence description.",
+      "explanation": "One paragraph explanation.",
       "code": "<full runnable ${detectedLanguage} program>",
       "benchmark": {
         "timeComplexity": "O(n)",
@@ -196,12 +195,12 @@ export async function convertVariant(
   variant: Variant,
   targetLanguage: string,
 ): Promise<{ code: string; notes: string }> {
-  const prompt = `Convert the following ${variant.language} program into idiomatic, fully runnable ${targetLanguage}. Preserve algorithmic technique (${variant.techniqueLabel}), inputs and outputs. The output MUST be a complete, self-contained, executable ${targetLanguage} program that compiles/runs without errors.
+  const prompt = `Convert the following ${variant.language} program into idiomatic, fully runnable ${targetLanguage}. Preserve algorithmic technique (${variant.techniqueLabel}), inputs and outputs. The output MUST be a complete, self-contained, executable ${targetLanguage} program.
 
 Return STRICT JSON:
 {
   "code": "<full ${targetLanguage} program>",
-  "notes": "Short note on idiomatic adjustments made for ${targetLanguage}."
+  "notes": "Short note on idiomatic adjustments made."
 }
 
 SOURCE (${variant.language}):
